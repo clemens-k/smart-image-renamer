@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/local/bin/python3
 
 # smart-image-renamer
 #
@@ -29,6 +29,8 @@ from pymediainfo import MediaInfo
 
 from PIL import Image
 from PIL.ExifTags import TAGS
+
+import pillow_heif
 
 from _version import __version__
 
@@ -148,15 +150,25 @@ def get_exif_data(img_file: str) -> dict:
             if k in TAGS
         }
     except AttributeError:
-        raise InvalidExifData
+        try:
+            exif_data = {
+                TAGS[k]: v
+                for k, v in img.getexif().items()
+                if k in TAGS
+            }
+        except AttributeError:
+            print("WARNING: Could not read ExifData from " + img_file)
+            raise InvalidExifData
+    # DEBUG: print(exif_data)
 
     # Add image format to EXIF
     exif_data['ext'] = img.format
     exif_data['Height'] = str(img.height) + 'px'
 
     # Find out the original timestamp or digitized timestamp from the EXIF
-    img_timestamp = (exif_data.get('DateTimeOriginal') or
-                     exif_data.get('DateTimeDigitized'))
+    img_timestamp = (exif_data.get('DateTimeDigitized') or
+                     exif_data.get('DateTimeOriginal') or
+                     exif_data.get('DateTime'))
 
     if not img_timestamp:
         raise NoExifTimeStamp
@@ -274,6 +286,8 @@ def find_new_name(old_filename: str) -> str:
 
 
 if __name__ == '__main__':
+    pillow_heif.register_heif_opener()
+    
     skipped_files = []
     args = get_cmd_args()
 
