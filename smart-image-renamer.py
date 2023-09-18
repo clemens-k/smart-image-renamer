@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 
 # smart-image-renamer
 #
@@ -21,16 +21,18 @@
 """Smart Image Renamer main module"""
 
 import argparse
+import datetime
 import itertools
 import os
 import re
-import datetime
-from pymediainfo import MediaInfo
+import sys
+from enum import IntEnum
 
+import inquirer
+import pillow_heif
 from PIL import Image
 from PIL.ExifTags import TAGS
-
-import pillow_heif
+from pymediainfo import MediaInfo
 
 from _version import __version__
 
@@ -58,6 +60,39 @@ class NoExifTimeStamp(Exception):
 class InvalidExifTimeStamp(Exception):
     """Could not process EXIF Timestamp, which should be "YYYY:MM:DD HH:MM:SS" """
     pass
+
+
+class BulkChoice(IntEnum):
+    """Enum for bulk choices"""
+    UNKNOWN = 0
+    YES = 1
+    NO = 2
+    ALWAYS = 3
+    NEVER = 4
+    ABORT = 5
+
+
+def get_bulk_choice(msg: str = 'Your choice?') -> BulkChoice:
+    """Get bulk choice from user"""
+    questions = [
+        inquirer.List('bulk',
+                      message=msg,
+                      choices=['Yes', 'No', 'Always', 'Never', 'Abort'],
+                      ),
+    ]
+    answers = inquirer.prompt(questions)
+    if answers['bulk'] == 'Yes':
+        return BulkChoice.YES
+    elif answers['bulk'] == 'No':
+        return BulkChoice.NO
+    elif answers['bulk'] == 'Always':
+        return BulkChoice.ALWAYS
+    elif answers['bulk'] == 'Never':
+        return BulkChoice.NEVER
+    elif answers['bulk'] == 'Abort':
+        return BulkChoice.ABORT
+    else:
+        return BulkChoice.UNKNOWN
 
 
 def get_cmd_args():
@@ -133,9 +168,7 @@ def get_exif_data(img_file: str) -> dict:
     Returns: A dictionary containing EXIF data of the file
 
     Raises: NotAnImageFile if file is not an image
-            InvalidExifData if EXIF can't be processed
             NoExifTimeStamp if EXIF does not contain timestamp
-            InvalidExifTimeStamp if EXIF DateTimeOriginal can't be processed
     """
     try:
         img = Image.open(img_file)
@@ -158,7 +191,7 @@ def get_exif_data(img_file: str) -> dict:
             }
         except AttributeError:
             print("WARNING: Could not read ExifData from " + img_file)
-            raise InvalidExifData
+            raise NoExifTimeStamp
     # DEBUG: print(exif_data)
 
     # Add image format to EXIF
@@ -180,7 +213,7 @@ def get_exif_data(img_file: str) -> dict:
                   img_timestamp.strip())
 
     if not img_timestamp:
-        raise InvalidExifTimeStamp
+        raise NoExifTimeStamp
 
     try:
         exif_data.update(img_timestamp.groupdict())
@@ -267,6 +300,29 @@ def get_video_data(video_file: str) -> dict:
     return vid_data
 
 
+def get_file_data(any_file: str) -> dict:
+    """ Last fallback: use plain timestamp of file
+    """
+
+    vid_data = dict()
+
+    vid_data['ext'] = any_file.split('.')[-1]
+    vid_data['Height'] = '0px'
+
+    dt = datetime.datetime.fromtimestamp(os.path.getmtime(any_file))
+    vid_data['YYYY'] = dt.year
+    vid_data['MM'] = dt.month
+    vid_data['DD'] = dt.day
+    vid_data['hh'] = dt.hour
+    vid_data['mm'] = dt.minute
+    vid_data['ss'] = dt.second
+    vid_data['Artist'] = ''
+    vid_data['Make'] = ''
+    vid_data['Model'] = ''
+
+    return vid_data
+
+
 def find_new_name(old_filename: str) -> str:
     """ Adds sequence number and checks if file also exist. Tries until it finds a good number.
 
@@ -287,7 +343,7 @@ def find_new_name(old_filename: str) -> str:
 
 if __name__ == '__main__':
     pillow_heif.register_heif_opener()
-    
+
     skipped_files = []
     args = get_cmd_args()
 
@@ -299,6 +355,10 @@ if __name__ == '__main__':
     test_mode = args.test
     recursive = args.recursive
     include_hidden = args.hidden
+    ignore_exifless = BulkChoice.UNKNOWN
+    process_unreadable_videos = BulkChoice.UNKNOWN
+
+    summary_files_processed = 0
 
     # Make sure the month, days, hours, minutes and seconds have 2 digits
     input_format = input_format.replace('{MM}', '{MM:02d}')
@@ -319,7 +379,7 @@ if __name__ == '__main__':
             seq = itertools.count(start=sequence_start)
             seq_width = len(str(len(files)))
 
-            print('Processing folder: {}'.format(root))
+            print(f'Processing folder: {root}')
             for f in sorted(files):
                 # Skip hidden files unless specified by user
                 if not include_hidden and f.startswith('.'):
@@ -333,11 +393,38 @@ if __name__ == '__main__':
                     try:
                         tag_data = get_video_data(old_file_name)
                     except NotAVideoFile:
-                        if not quiet:
-                            print('INFO: ' + old_file_name + ' is neither an image nor a video file!')
+                        if old_file_name.split('.')[-1] in ['mp4','mov', '3gp']:
+                            print(f'WARNING: {old_file_name} is a video file, but I cannot open it!')
+                            if process_unreadable_videos != BulkChoice.NEVER and process_unreadable_videos != BulkChoice.ALWAYS:
+                                process_unreadable_videos = get_bulk_choice(f'Process file time stamp {old_file_name}?')
+                            if process_unreadable_videos == BulkChoice.ABORT:
+                                sys.exit(1)
+                            elif process_unreadable_videos == BulkChoice.NEVER or process_unreadable_videos == BulkChoice.NO:
+                                continue
+                            elif process_unreadable_videos == BulkChoice.ALWAYS or process_unreadable_videos == BulkChoice.YES:
+                                    tag_data = get_file_data(old_file_name)
+                        elif verbose and not quiet:
+                            print(f'INFO: {old_file_name} is neither an image nor a video file!')
+                            continue
+                except NoExifTimeStamp:
+                    if not quiet:
+                        print(f'INFO: {old_file_name} does not contain usable timestamp in EXIF!')
+                    
+                    # Decide how to proceed with image file, that has no usable EXIF timestamp
+                    if ignore_exifless != BulkChoice.NEVER and ignore_exifless != BulkChoice.ALWAYS:
+                        ignore_exifless = get_bulk_choice(f'Ignore file {old_file_name} without EXIF timestamp?')
+                    
+                    if ignore_exifless == BulkChoice.ABORT:
+                        sys.exit(1)
+                    elif ignore_exifless == BulkChoice.ALWAYS or ignore_exifless == BulkChoice.YES:
                         continue
-                except:
-                    tag_data = get_img_data(old_file_name)
+                    elif ignore_exifless == BulkChoice.NEVER or ignore_exifless == BulkChoice.NO:
+                        try:
+                            tag_data = get_img_data(old_file_name)
+                        except NotAnImageFile:
+                            if verbose and not quiet:
+                                print(f'INFO: {old_file_name} is neither an image nor a video file!')
+                            continue
 
                 # Generate data to be replaced in user provided format
                 new_image_data = tag_data
@@ -350,7 +437,11 @@ if __name__ == '__main__':
 
                 # file already has correct file name, skip it
                 if old_file_name == new_file_name_complete:
+                    if verbose and not quiet:
+                        print(f'INFO: Skipping {old_file_name}, because it does already have correct file name!')
                     continue
+
+                summary_files_processed += 1
 
                 # target file name is already there, maybe high-speed shutter
                 # was used (5 pics per second)
@@ -381,3 +472,5 @@ if __name__ == '__main__':
             # Break if recursive flag is not present
             if not recursive:
                 break
+
+    print(f'Processed {summary_files_processed} files.')
