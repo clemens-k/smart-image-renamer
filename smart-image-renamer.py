@@ -268,6 +268,9 @@ def get_video_data(video_file: str) -> dict:
     Raises: NotAVideoFile if file is not a video
     """
 
+    if not MediaInfo.can_parse():
+        raise SystemError("libmediainfo library is missing. Please install!")
+
     try:
         vid = MediaInfo.parse(video_file)
     except:
