@@ -344,9 +344,8 @@ def find_new_name(old_filename: str) -> str:
     return new_name
 
 
-if __name__ == '__main__':
+def cli():
     pillow_heif.register_heif_opener()
-
     skipped_files = []
     args = get_cmd_args()
 
@@ -477,3 +476,7 @@ if __name__ == '__main__':
                 break
 
     print(f'Processed {summary_files_processed} files.')
+
+
+if __name__ == '__main__':
+    cli()
