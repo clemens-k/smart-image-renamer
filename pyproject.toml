@@ -5,6 +5,8 @@ description = ""
 authors = ["clemens-k <clemens-k@users.noreply.github.com>"]
 license = "GPL2"
 readme = "README.md"
+repository = "https://github.com/clemens-k/smart-image-renamer"
+packages =[{include = "smart-image-renamer"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -21,5 +23,5 @@ pytest = "^8.2.0"
 smart-image-renamer = "smart-image-renamer.cli:cli"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
