@@ -34,7 +34,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from pymediainfo import MediaInfo
 
-from _version import __version__
+from smart_image_renamer._version import __version__
 
 
 class NotAnImageFile(Exception):
