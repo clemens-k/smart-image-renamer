@@ -13,17 +13,12 @@ Install
 
 To install smart-image-renamer:
 
-Recommended method is via pip.
+Recommended method is via pipx from local repo.
 
 ::
 
-  pip install smart-image-renamer
+  pipx install .
 
-Else install like any other python package.
-
-::
-
-  python setup.py install
 
 Usage
 =====

@@ -11,8 +11,4 @@ should create `sdist` and `wheel` in `dist` folder
 
 # Pipx installation from local folder
 
-    pipx install dist/smart
-
-# Publishing
-
-    poetry publish
+    pipx install .
