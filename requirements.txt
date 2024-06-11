@@ -1,4 +1,0 @@
-pymediainfo
-Pillow
-pillow-heif
-inquirer
