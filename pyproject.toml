@@ -29,6 +29,7 @@ inquirer = "^3.2.4"
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.0.0"
 pytest = "^8.2.0"
+pre-commit = "^3.0.0"
 
 [tool.poetry.scripts]
 smart-image-renamer = "smart_image_renamer.cli:cli"
