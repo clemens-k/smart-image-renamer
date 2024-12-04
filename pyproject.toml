@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "smart-image-renamer"
-version = "0.5.0"
+version = "0.6.0"
 description = "A script to intelligently bulk rename images using EXIF data contained within."
 authors = ["Ronak Gandhi <ronak.gandhi@ronakg.com>", "clemens-k <clemens-k@users.noreply.github.com>"]
 license = "GPL2"

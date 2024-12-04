@@ -404,6 +404,11 @@ def cli():
                 if not include_hidden and f.startswith("."):
                     continue
 
+                if f in ('Thumbs.db'):
+                    if verbose:
+                        print(f'INFO: Skipping {root}/{f} as hard-coded exception')
+                    continue
+
                 old_file_name = os.path.join(root, f)
                 try:
                     # Get EXIF data from the image
