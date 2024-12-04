@@ -19,6 +19,7 @@ Added:
 - support for HEIF images
 - support for video files
 - if no EXIF data is found, fall back to file time stamps
+- never rename thumbnail databases: Thumbs.db (win) and .DS_Store (Moc)
 - pipx support
 - bulk operations: always, never, ...
 - modified default naming
