@@ -404,7 +404,7 @@ def cli():
                 if not include_hidden and f.startswith("."):
                     continue
 
-                if f in ('Thumbs.db'):
+                if f in ('Thumbs.db', '.DS_Store'):
                     if verbose:
                         print(f'INFO: Skipping {root}/{f} as hard-coded exception')
                     continue
