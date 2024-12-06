@@ -25,6 +25,7 @@ pymediainfo = "^6.1.0"
 pillow = "^10.3.0"
 pillow-heif = "^0.16.0"
 inquirer = "^3.2.4"
+python-magic = "^0.4.1"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^7.0.0"
