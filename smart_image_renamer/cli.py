@@ -26,6 +26,7 @@ import sys
 from enum import IntEnum
 
 import inquirer
+import magic
 import pillow_heif
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -407,6 +408,12 @@ def cli():
                 if f in ('Thumbs.db', '.DS_Store'):
                     if verbose:
                         print(f'INFO: Skipping {root}/{f} as hard-coded exception')
+                    continue
+
+                mime_type = magic.from_file(os.path.join(root, f), mime=True)
+                if not mime_type.startswith("image") and not mime_type.startswith("video"):
+                    if verbose:
+                        print(f"INFO: {f} is not an \'image/\...' or \'video/\...' file, but \'{mime_type.split('/')[0]}/\...'! Skipping it!")
                     continue
 
                 old_file_name = os.path.join(root, f)

@@ -26,5 +26,6 @@ Added:
 - pipx support
 - bulk operations: always, never, ...
 - modified default naming: incl. height
+- using libmagic to detect mime type, skip all non-video and non-images
 
 and many minor improvements, which I might not remember...
